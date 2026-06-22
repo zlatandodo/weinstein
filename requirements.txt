@@ -1,0 +1,17 @@
+# Core dependencies for WAT tools. Pin versions as the project stabilizes.
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# Stage 1 stock scanner (workflows/scan_stage1_breakouts.md)
+yfinance>=0.2.40
+pandas>=2.0.0
+numpy>=1.24.0
+lxml>=4.9.0          # pandas.read_html (Wikipedia universe scraping)
+matplotlib>=3.7.0
+mplfinance>=0.12.10b0
+
+# Local dashboard (tools/dashboard.py)
+flask>=3.0.0
+
+# Cloud dashboard (streamlit_app.py — deployable on streamlit.app)
+streamlit>=1.36.0

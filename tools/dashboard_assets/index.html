@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weinstein Stage 1 Scanner</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#2f81f7; --green:#3fb950;
+    --red:#f85149; --yellow:#d29922; --chip:#21262d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px}
+  header{padding:14px 20px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:14px;background:var(--panel)}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  header .sub{color:var(--muted);font-size:12px}
+  .layout{display:flex;height:calc(100vh - 53px)}
+  .left{width:54%;min-width:520px;overflow:auto;border-right:1px solid var(--border)}
+  .right{flex:1;overflow:auto;background:var(--panel)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;
+    padding:14px 16px;border-bottom:1px solid var(--border);background:var(--panel2)}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  select,input{background:var(--bg);color:var(--text);border:1px solid var(--border);
+    border-radius:6px;padding:6px 8px;font-size:13px}
+  input{width:90px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:6px;
+    padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:var(--chip);color:var(--text);border:1px solid var(--border)}
+  .status{padding:8px 16px;font-size:12px;color:var(--muted);
+    border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:center}
+  .log{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:var(--muted);
+    background:#010409;border:1px solid var(--border);border-radius:6px;
+    margin:10px 16px;padding:8px;max-height:120px;overflow:auto;white-space:pre-wrap;display:none}
+  .toolbar{display:flex;gap:12px;align-items:center;padding:8px 16px;color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th{position:sticky;top:0;background:var(--panel2);cursor:pointer;font-size:11px;
+    text-transform:uppercase;letter-spacing:.03em;color:var(--muted);z-index:1}
+  th:first-child,td:first-child{text-align:left}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--panel2)}
+  tbody tr.sel{background:#15324f}
+  .tk{font-weight:700;color:var(--text)}
+  .badges{display:flex;gap:3px;justify-content:flex-end}
+  .b{width:16px;height:16px;border-radius:4px;font-size:10px;line-height:16px;
+    text-align:center;color:#0d1117;font-weight:700}
+  .b.on{background:var(--green)} .b.off{background:#39414d;color:#6e7681}
+  .scorebar{position:relative;width:54px;height:14px;background:#39414d;border-radius:7px;display:inline-block;vertical-align:middle}
+  .scorebar > i{position:absolute;left:0;top:0;height:100%;border-radius:7px;background:var(--accent)}
+  .pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .pill.q{background:rgba(63,185,80,.18);color:var(--green);border:1px solid rgba(63,185,80,.4)}
+  .trend-rising{color:var(--green)} .trend-falling{color:var(--red)} .trend-flat{color:var(--muted)}
+  .stg{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;font-weight:700;color:#0d1117}
+  .stg1{background:#ffa726} .stg2{background:#00c853} .stg3{background:#fff176} .stg4{background:#ef5350}
+  .stg0{background:#546e7a;color:#cfd8dc}
+  .emg{box-shadow:0 0 0 2px var(--accent)}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  .alertbar{margin:10px 16px;padding:10px 14px;border-radius:8px;font-size:13px;
+    background:linear-gradient(90deg,rgba(0,200,83,.16),rgba(47,129,247,.10));
+    border:1px solid rgba(0,200,83,.4);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .alertbar .big{font-size:15px;font-weight:700;color:var(--text)}
+  .alertbar .new{background:var(--accent);color:#fff;border-radius:10px;padding:1px 8px;font-weight:700}
+  .alertbar .chip{background:var(--chip);border:1px solid var(--border);border-radius:6px;
+    padding:2px 7px;cursor:pointer;color:var(--text)}
+  .alertbar .chip.isnew{border-color:var(--accent)}
+  .alertbar button{padding:5px 12px;font-size:12px}
+  .right .rhead{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between}
+  .right h2{margin:0;font-size:16px}
+  #tv{height:460px;margin:0}
+  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 16px}
+  .metric{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .metric .k{font-size:10px;color:var(--muted);text-transform:uppercase}
+  .metric .v{font-size:15px;font-weight:700;margin-top:2px}
+  .pngwrap{padding:12px 16px}
+  .pngwrap img{width:100%;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .empty{color:var(--muted);padding:40px 16px;text-align:center}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:11px;padding:0 16px 8px}
+  .legend span b{color:var(--text)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Weinstein Stage 1 → 2 Scanner</h1>
+  <span class="sub">base formation → breakout · weekly · vs SPY</span>
+</header>
+
+<div class="layout">
+  <!-- LEFT: controls + results -->
+  <div class="left">
+    <div class="controls">
+      <div class="field"><label>Universe</label>
+        <select id="universe">
+          <option value="sp500">S&P 500</option>
+          <option value="sp400">S&P 400 (mid)</option>
+          <option value="sp600">S&P 600 (small)</option>
+          <option value="sp1500" selected>S&P 1500 (500+400+600)</option>
+        </select>
+      </div>
+      <div class="field"><label>Period</label>
+        <select id="period"><option>5y</option><option>3y</option><option>10y</option></select>
+      </div>
+      <div class="field"><label>Limit (test)</label><input id="limit" type="number" placeholder="all" /></div>
+      <div class="field"><label>Workers</label><input id="workers" type="number" value="10" /></div>
+      <div class="field"><label>Charts (top)</label><input id="top" type="number" value="10" /></div>
+      <button id="run">▶ Run scan</button>
+      <button id="reload" class="ghost">↻ Load results</button>
+    </div>
+
+    <div class="status">
+      <span id="statusText">Idle.</span>
+      <a href="#" id="toggleLog" style="color:var(--accent)">show log</a>
+    </div>
+    <pre class="log" id="log"></pre>
+
+    <div id="alertBanner" class="alertbar" style="display:none"></div>
+
+    <div class="toolbar">
+      <label>Stage
+        <select id="stageFilter">
+          <option value="all">all</option>
+          <option value="emerged">Stage 2 just emerged ⭐</option>
+          <option value="1">Stage 1 (base)</option>
+          <option value="2">Stage 2 (advance)</option>
+          <option value="3">Stage 3 (top)</option>
+          <option value="4">Stage 4 (decline)</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="onlyBase" /> Stage 1 base (1+2)</label>
+      <label><input type="checkbox" id="onlyQ" /> 6/6</label>
+      <label>Min cap $B <input id="minMcap" type="number" step="0.1" style="width:58px" placeholder="0" /></label>
+      <label>Min vol Msh <input id="minVol" type="number" step="0.1" style="width:58px" placeholder="0" /></label>
+      <span id="summary"></span>
+    </div>
+    <div class="legend" id="legend"></div>
+
+    <table id="tbl">
+      <thead><tr>
+        <th data-k="ticker">Ticker</th>
+        <th data-k="current_stage">Stage</th>
+        <th data-k="npass">Criteria</th>
+        <th data-k="score">Score</th>
+        <th data-k="base_duration_weeks">Base wk</th>
+        <th data-k="base_range_pct">Range%</th>
+        <th data-k="vol_ratio_4w">Vol×</th>
+        <th data-k="rs_trend">RS</th>
+        <th data-k="mansfield_rp">Mansf</th>
+        <th data-k="sma30w_slope_pct">SMA30%</th>
+        <th data-k="price_vs_base_high_pct">vs High%</th>
+        <th data-k="current_price">Price</th>
+        <th data-k="market_cap">MktCap</th>
+        <th data-k="avg_daily_vol">AvgVol</th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="14" class="empty">No results yet — run a scan or load existing results.</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- RIGHT: chart detail -->
+  <div class="right">
+    <div class="rhead">
+      <h2 id="detTicker">Select a ticker</h2>
+      <span id="detPill"></span>
+    </div>
+    <div id="tv"></div>
+    <div class="metrics" id="metrics"></div>
+    <div class="pngwrap" id="pngwrap"></div>
+  </div>
+</div>
+
+<script>
+// Lazy-load TradingView only when a chart is first requested (keeps initial
+// page load fast). Returns a promise that resolves when window.TradingView ready.
+let _tvP=null;
+function loadTV(){
+  if(window.TradingView) return Promise.resolve();
+  if(_tvP) return _tvP;
+  _tvP=new Promise((res,rej)=>{const s=document.createElement('script');
+    s.src='https://s3.tradingview.com/tv.js';s.onload=res;s.onerror=rej;
+    document.head.appendChild(s);});
+  return _tvP;
+}
+let ROWS=[], sortKey="npass", sortDir=-1, selected=null, CRITLABELS={};
+const CRIT_ORDER=["c1_base_downtrend","c2_moving_avg","c3_volume","c4_rel_strength","c5_proximity","c6_no_overhead"];
+const CRIT_SHORT={c1_base_downtrend:"1",c2_moving_avg:"2",c3_volume:"3",c4_rel_strength:"4",c5_proximity:"5",c6_no_overhead:"6"};
+
+const $=s=>document.querySelector(s);
+function fmt(v,d=2){return (v===null||v===undefined||isNaN(v))?"–":Number(v).toFixed(d)}
+
+async function runScan(){
+  const body={
+    universe:$("#universe").value, period:$("#period").value,
+    max_workers:Number($("#workers").value||10), top:Number($("#top").value||10),
+  };
+  const lim=$("#limit").value; if(lim) body.limit=Number(lim);
+  $("#run").disabled=true; $("#statusText").textContent="Starting scan…";
+  const r=await fetch("/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.status===409){$("#statusText").textContent="A scan is already running.";poll();return;}
+  poll();
+}
+
+async function poll(){
+  const r=await fetch("/api/status"); const s=await r.json();
+  $("#log").textContent=(s.log||[]).join("\n");
+  $("#log").scrollTop=$("#log").scrollHeight;
+  if(s.running){
+    const last=(s.log||[]).slice(-1)[0]||"working…";
+    $("#statusText").textContent="⏳ "+last;
+    setTimeout(poll,1500);
+  }else{
+    $("#run").disabled=false;
+    $("#statusText").textContent=(s.returncode===0||s.returncode===null)?"✓ Scan finished.":"⚠ Scan exited code "+s.returncode;
+    loadResults();
+  }
+}
+
+async function loadResults(){
+  const r=await fetch("/api/results"); const d=await r.json();
+  ROWS=d.rows||[]; CRITLABELS=d.criteria_labels||{};
+  $("#summary").textContent=`${d.evaluated||0} evaluated · ${d.qualifiers||0} full 6/6 qualifiers`;
+  renderLegend(); render(); loadAlerts();
+}
+
+async function loadAlerts(){
+  let d; try{ d=await (await fetch("/api/alerts")).json(); }catch(e){ return; }
+  const bar=$("#alertBanner");
+  if(!d.count){ bar.style.display="none"; return; }
+  const top=d.rows.slice(0,12).map(x=>
+    `<span class="chip ${x.is_new?'isnew':''}" data-tk="${x.ticker}" title="RVOL ${x.rvol_at_emergence??'?'} · Mansfield ${x.mansfield_rp??'?'}">${x.ticker}${x.is_new?' ●':''}</span>`).join("");
+  bar.innerHTML=`<span class="big">🔔 ${d.count} Stage 2 emerged</span>`+
+    (d.new?`<span class="new">${d.new} new</span>`:"")+
+    `<span style="color:var(--muted)">top by RVOL:</span> ${top}`+
+    `<button id="expAlerts" style="margin-left:auto">⬇ Export CSV</button>`;
+  bar.style.display="flex";
+  bar.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{
+    $("#stageFilter").value="emerged"; render(); select(c.dataset.tk);
+  });
+  $("#expAlerts").onclick=()=>{ window.location.href="/api/alerts.csv"; };
+}
+
+function renderLegend(){
+  const crit = CRIT_ORDER.map((k,i)=>`<span><b>${i+1}</b> ${CRITLABELS[k]||k}</span>`).join("");
+  const stg = '&nbsp;&nbsp;|&nbsp;&nbsp;'+
+    '<span class="stg stg1">S1</span> base &nbsp;'+
+    '<span class="stg stg2">S2</span> advance &nbsp;'+
+    '<span class="stg stg3">S3</span> top &nbsp;'+
+    '<span class="stg stg4">S4</span> decline';
+  $("#legend").innerHTML = crit + stg;
+}
+
+function fmtBig(v){ // human-readable $ market cap
+  if(v===null||v===undefined||isNaN(v))return"–";
+  if(v>=1e12)return(v/1e12).toFixed(2)+"T";
+  if(v>=1e9)return(v/1e9).toFixed(2)+"B";
+  if(v>=1e6)return(v/1e6).toFixed(0)+"M";
+  return Number(v).toFixed(0);
+}
+function fmtVol(v){ // volume in millions of shares
+  if(v===null||v===undefined||isNaN(v))return"–";
+  return (v/1e6).toFixed(2)+"M";
+}
+
+function stageBadge(r){
+  const s=r.current_stage||0;
+  const emg=r.stage2_emerged?' emg':'';
+  return `<span class="stg stg${s}${emg}" title="${r.current_stage_name||''}${r.stage2_emerged?' · just emerged, RVOL '+(r.rvol_at_emergence??'?'):''}">S${s||'?'}${r.stage2_emerged?'⭐':''}</span>`;
+}
+
+function render(){
+  const only=$("#onlyQ").checked, onlyBase=$("#onlyBase").checked;
+  const stageF=$("#stageFilter").value;
+  const minMcap=Number($("#minMcap").value||0)*1e9;   // $B -> $
+  const minVol=Number($("#minVol").value||0)*1e6;     // M shares -> shares
+  let rows=ROWS.filter(r=>(!only||r.qualifies) &&
+    (!onlyBase || (r.criteria.c1_base_downtrend && r.criteria.c2_moving_avg)) &&
+    (!minMcap || (r.market_cap!=null && r.market_cap>=minMcap)) &&
+    (!minVol  || (r.avg_daily_vol!=null && r.avg_daily_vol>=minVol)) &&
+    (stageF==="all" || (stageF==="emerged" ? r.stage2_emerged : String(r.current_stage)===stageF)));
+  rows.sort((a,b)=>{
+    let x=a[sortKey],y=b[sortKey];
+    if(sortKey==="rs_trend"){x=x||"";y=y||"";return sortDir*(x<y?-1:x>y?1:0);}
+    return sortDir*((x??-1)-(y??-1));
+  });
+  const tb=$("#tbody");
+  if(!rows.length){tb.innerHTML='<tr><td colspan="14" class="empty">No rows.</td></tr>';return;}
+  tb.innerHTML=rows.map(r=>{
+    const badges=CRIT_ORDER.map(k=>`<div class="b ${r.criteria[k]?'on':'off'}" title="${CRITLABELS[k]||k}">${r.criteria[k]?'✓':CRIT_SHORT[k]}</div>`).join("");
+    const tcls="trend-"+(r.rs_trend||"flat");
+    const rp=r.mansfield_rp;
+    const rpcls=rp==null?'':(rp>0?'pos':'neg');
+    return `<tr data-tk="${r.ticker}" class="${selected===r.ticker?'sel':''}">
+      <td><span class="tk">${r.ticker}</span> ${r.qualifies?'<span class="pill q">6/6</span>':''}</td>
+      <td>${stageBadge(r)}</td>
+      <td><div class="badges">${badges}</div></td>
+      <td><span class="scorebar"><i style="width:${r.score}%"></i></span> ${r.score}</td>
+      <td>${r.base_duration_weeks||'–'}</td>
+      <td>${fmt(r.base_range_pct,1)}</td>
+      <td>${fmt(r.vol_ratio_4w,2)}</td>
+      <td class="${tcls}">${r.rs_trend||'–'}</td>
+      <td class="${rpcls}">${rp==null?'–':(rp>0?'+':'')+rp.toFixed(1)}</td>
+      <td>${fmt(r.sma30w_slope_pct,1)}</td>
+      <td>${fmt(r.price_vs_base_high_pct,1)}</td>
+      <td>${fmt(r.current_price,2)}</td>
+      <td>${fmtBig(r.market_cap)}</td>
+      <td>${fmtVol(r.avg_daily_vol)}</td>
+    </tr>`;
+  }).join("");
+  tb.querySelectorAll("tr").forEach(tr=>tr.onclick=()=>select(tr.dataset.tk));
+}
+
+function select(tk){
+  selected=tk; render();
+  const r=ROWS.find(x=>x.ticker===tk); if(!r)return;
+  $("#detTicker").innerHTML=`${tk} ${stageBadge(r)}`;
+  const emg=r.stage2_emerged?` · Stage 2 emerged (RVOL ${r.rvol_at_emergence??'?'})`:'';
+  $("#detPill").innerHTML = (r.qualifies?'<span class="pill q">6/6 qualifier</span> ':`<span style="color:var(--muted)">${r.npass}/6 </span>`)+
+    `<span style="color:var(--muted)">${r.current_stage_name||''}${emg}</span>`;
+  // metrics
+  const m=[["Stage",r.current_stage_name||'–'],["Weeks in stage",r.weeks_in_stage||'–'],
+    ["Mansfield RS",r.mansfield_rp==null?'–':(r.mansfield_rp>0?'+':'')+r.mansfield_rp],
+    ["Score",r.score],["Base (wk)",r.base_duration_weeks||'–'],["Range %",fmt(r.base_range_pct,1)],
+    ["Vol ×",fmt(r.vol_ratio_4w,2)],["RS trend",r.rs_trend||'–'],["SMA30 slope %",fmt(r.sma30w_slope_pct,1)],
+    ["vs base-high %",fmt(r.price_vs_base_high_pct,1)],["Price $",fmt(r.current_price,2)],
+    ["Mkt cap",fmtBig(r.market_cap)]];
+  $("#metrics").innerHTML=m.map(([k,v])=>`<div class="metric"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  drawTV(tk);
+  // our PNG (generate on demand if missing)
+  showPng(tk, r.has_png);
+}
+
+function drawTV(tk){
+  const c=$("#tv"); c.innerHTML='<div style="padding:30px;color:var(--muted)">Loading TradingView…</div>';
+  loadTV().then(()=>{
+    c.innerHTML="";
+    new TradingView.widget({
+      container_id:"tv", autosize:false, width:"100%", height:460,
+      symbol:tk, interval:"W", timezone:"Etc/UTC", theme:"dark", style:"1",
+      locale:"en", hide_side_toolbar:false, allow_symbol_change:true,
+      studies:[{id:"MASimple@tv-basic",inputs:{length:10}},{id:"MASimple@tv-basic",inputs:{length:30}}]
+    });
+  }).catch(()=>{c.innerHTML='<div style="padding:30px;color:var(--red)">TradingView failed to load.</div>';});
+}
+
+async function showPng(tk, has){
+  const w=$("#pngwrap");
+  w.innerHTML='<div class="k" style="color:var(--muted);font-size:11px;margin-bottom:6px">LOCAL CHART (weekly · SMA10/30 · volume · RS · base lines)</div>';
+  const img=document.createElement("img");
+  const bust="?t="+Date.now();
+  if(has){ img.src="/api/chart/"+tk+".png"+bust; w.appendChild(img); return; }
+  w.insertAdjacentHTML("beforeend",'<div style="color:var(--muted);font-size:12px">Generating local chart…</div>');
+  try{
+    const r=await fetch("/api/generate_chart/"+tk,{method:"POST"});
+    if(r.ok){ img.src="/api/chart/"+tk+".png"+bust; w.lastChild.remove(); w.appendChild(img); }
+    else{ w.lastChild.textContent="No local chart available for "+tk+"."; }
+  }catch(e){ w.lastChild.textContent="Chart generation failed."; }
+}
+
+// wires
+$("#run").onclick=runScan;
+$("#reload").onclick=loadResults;
+$("#onlyQ").onchange=render;
+$("#onlyBase").onchange=render;
+$("#minMcap").oninput=render;
+$("#minVol").oninput=render;
+$("#stageFilter").onchange=render;
+$("#toggleLog").onclick=e=>{e.preventDefault();const l=$("#log");l.style.display=l.style.display==="block"?"none":"block";};
+document.querySelectorAll("th").forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k; if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==="ticker"||k==="rs_trend")?1:-1;}
+  render();
+});
+loadResults();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Secrets & credentials
+.env
+credentials.json
+token.json
+
+# Temporary / intermediate processing files
+.tmp/
+*.log
+
+# Regenerable scan artifacts (large / churny) — NOT committed.
+# output/ IS committed (the precompute deliverable the Streamlit app reads).
+data/
+charts/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
