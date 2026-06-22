@@ -69,6 +69,17 @@
     padding:2px 7px;cursor:pointer;color:var(--text)}
   .alertbar .chip.isnew{border-color:var(--accent)}
   .alertbar button{padding:5px 12px;font-size:12px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+    gap:10px;padding:6px 16px 24px}
+  .left.full{width:100% !important}
+  .gallery .cell{cursor:pointer;border:1px solid var(--border);border-radius:8px;
+    overflow:hidden;background:#fff}
+  .gallery .cell.sel{box-shadow:0 0 0 2px var(--accent)}
+  .gallery .cell img{width:100%;display:block;min-height:120px;background:#fff}
+  .gallery .cap{display:flex;justify-content:space-between;align-items:center;
+    padding:4px 8px;background:var(--panel2);font-size:12px}
+  .gallery .cap .tk{color:var(--text)}
+  .gnote{padding:4px 16px;color:var(--muted);font-size:12px}
   .right .rhead{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;
     align-items:center;justify-content:space-between}
   .right h2{margin:0;font-size:16px}
@@ -110,6 +121,7 @@
       <div class="field"><label>Charts (top)</label><input id="top" type="number" value="10" /></div>
       <button id="run">▶ Run scan</button>
       <button id="reload" class="ghost">↻ Load results</button>
+      <button id="galleryBtn" class="ghost">🖼 Gallery</button>
     </div>
 
     <div class="status">
@@ -158,6 +170,9 @@
       </tr></thead>
       <tbody id="tbody"><tr><td colspan="14" class="empty">No results yet — run a scan or load existing results.</td></tr></tbody>
     </table>
+
+    <div class="gnote" id="gnote" style="display:none"></div>
+    <div class="gallery" id="gallery" style="display:none"></div>
   </div>
 
   <!-- RIGHT: chart detail -->
@@ -270,7 +285,10 @@ function stageBadge(r){
   return `<span class="stg stg${s}${emg}" title="${r.current_stage_name||''}${r.stage2_emerged?' · just emerged, RVOL '+(r.rvol_at_emergence??'?'):''}">S${s||'?'}${r.stage2_emerged?'⭐':''}</span>`;
 }
 
-function render(){
+let galleryMode=false;
+const GALLERY_MAX=60;
+
+function getFiltered(){
   const only=$("#onlyQ").checked, onlyBase=$("#onlyBase").checked;
   const stageF=$("#stageFilter").value;
   const minMcap=Number($("#minMcap").value||0)*1e9;   // $B -> $
@@ -285,6 +303,30 @@ function render(){
     if(sortKey==="rs_trend"){x=x||"";y=y||"";return sortDir*(x<y?-1:x>y?1:0);}
     return sortDir*((x??-1)-(y??-1));
   });
+  return rows;
+}
+
+function renderGallery(){
+  const all=getFiltered();
+  const rows=all.slice(0,GALLERY_MAX);
+  const note=$("#gnote"), g=$("#gallery");
+  note.textContent = `Showing ${rows.length} of ${all.length} charts (daily · `
+    + `SMA50 blue · SMA200 yellow). Narrow the filters to see specific names.`;
+  g.innerHTML = rows.map(r=>{
+    const tag = encodeURIComponent("S"+(r.current_stage||"?")+(r.stage2_emerged?" EMERGED":""));
+    return `<div class="cell ${selected===r.ticker?'sel':''}" data-tk="${r.ticker}">
+      <img loading="lazy" src="/api/gallery_chart/${r.ticker}.png?tag=${tag}" alt="${r.ticker}"
+        onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cap',textContent:'${r.ticker}: no daily data'}))">
+      <div class="cap"><span class="tk">${r.ticker} ${stageBadge(r)}</span>
+        <span style="color:var(--muted)">${fmt(r.current_price,2)} · ${fmtBig(r.market_cap)}</span></div>
+    </div>`;
+  }).join("") || '<div class="empty">No rows.</div>';
+  g.querySelectorAll(".cell").forEach(c=>c.onclick=()=>select(c.dataset.tk));
+}
+
+function render(){
+  if(galleryMode){ renderGallery(); return; }
+  let rows=getFiltered();
   const tb=$("#tbody");
   if(!rows.length){tb.innerHTML='<tr><td colspan="14" class="empty">No rows.</td></tr>';return;}
   tb.innerHTML=rows.map(r=>{
@@ -367,6 +409,16 @@ $("#onlyBase").onchange=render;
 $("#minMcap").oninput=render;
 $("#minVol").oninput=render;
 $("#stageFilter").onchange=render;
+$("#galleryBtn").onclick=()=>{
+  galleryMode=!galleryMode;
+  $("#galleryBtn").classList.toggle("ghost", !galleryMode);
+  $("#tbl").style.display = galleryMode ? "none" : "";
+  $("#gallery").style.display = galleryMode ? "grid" : "none";
+  $("#gnote").style.display = galleryMode ? "block" : "none";
+  document.querySelector(".left").classList.toggle("full", galleryMode);
+  document.querySelector(".right").style.display = galleryMode ? "none" : "";
+  render();
+};
 $("#toggleLog").onclick=e=>{e.preventDefault();const l=$("#log");l.style.display=l.style.display==="block"?"none":"block";};
 document.querySelectorAll("th").forEach(th=>th.onclick=()=>{
   const k=th.dataset.k; if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==="ticker"||k==="rs_trend")?1:-1;}

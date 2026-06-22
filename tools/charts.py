@@ -16,6 +16,50 @@ from stage_engine import classify, mansfield_rs
 # Show roughly the last ~3 years on the chart for readability.
 _CHART_WEEKS = 160
 
+# Gallery thumbnails: daily candles + 50/200-day SMA (blue / yellow).
+SMA50_COLOR = "#2f81f7"    # blue
+SMA200_COLOR = "#f5c518"   # yellow
+_GALLERY_DAYS = 400        # ~18 months of daily bars shown
+
+
+def gallery_chart(
+    ticker: str,
+    df_daily,
+    title_suffix: str = "",
+    out_dir=CHARTS_DIR,
+) -> str:
+    """Compact DAILY candlestick thumbnail with 50-day (blue) & 200-day (yellow)
+    SMA, for the gallery grid. Returns the saved PNG path."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import mplfinance as mpf
+
+    sub = (out_dir / "gallery")
+    sub.mkdir(parents=True, exist_ok=True)
+
+    data = df_daily.dropna(subset=["Open", "High", "Low", "Close"]).copy()
+    data = data[["Open", "High", "Low", "Close", "Volume"]]
+    if not isinstance(data.index, pd.DatetimeIndex):
+        data.index = pd.to_datetime(data.index)
+    data = data.tail(_GALLERY_DAYS)
+
+    out_path = str((sub / f"{ticker}.png").resolve())
+    mpf.plot(
+        data,
+        type="candle",
+        style="yahoo",
+        title=f"{ticker}{(' · ' + title_suffix) if title_suffix else ''}",
+        mav=(50, 200),
+        mavcolors=[SMA50_COLOR, SMA200_COLOR],
+        volume=False,
+        figratio=(4, 3),
+        figscale=0.7,
+        tight_layout=True,
+        savefig=dict(fname=out_path, dpi=90, bbox_inches="tight"),
+    )
+    return out_path
+
 
 def chart_candidate(
     ticker: str,

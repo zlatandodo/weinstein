@@ -67,6 +67,20 @@ def fmt_vol(v):
     return "–" if pd.isna(v) else f"{float(v)/1e6:.2f}M"
 
 
+@st.cache_data(show_spinner=False)
+def gallery_png(ticker: str, tag: str, day: str):
+    """Daily thumbnail (SMA50 blue / SMA200 yellow), cached per ticker per day."""
+    try:
+        from charts import gallery_chart
+        from data_fetch import fetch_one
+        d = fetch_one(ticker, "3y", max_age_days=1, interval="1d")
+        if d is None or d.empty:
+            return None
+        return gallery_chart(ticker, d, title_suffix=tag)
+    except Exception:
+        return None
+
+
 if not DIAG.exists():
     st.title("📈 Weinstein Stage Scanner")
     st.warning("No scan output found yet. Run `python tools/stage_scanner.py "
@@ -129,6 +143,9 @@ min_vol = st.sidebar.number_input("Min avg daily vol (M shares)", 0.0, step=0.1,
 sort_by = st.sidebar.selectbox(
     "Sort by", ["npass", "score", "mansfield_rp", "rvol_at_emergence",
                 "vol_ratio_4w", "market_cap", "base_duration_weeks"])
+gallery_view = st.sidebar.toggle("🖼 Gallery view (daily · SMA50/200)")
+gal_cols = st.sidebar.slider("Gallery columns", 3, 6, 3) if gallery_view else 3
+GALLERY_MAX = 36
 
 f = df.copy()
 if stage_opt.startswith("Stage 2 just"):
@@ -145,6 +162,35 @@ if min_vol > 0 and "avg_daily_vol" in f:
     f = f[f["avg_daily_vol"].fillna(0) >= min_vol * 1e6]
 if sort_by in f.columns:
     f = f.sort_values(sort_by, ascending=False, na_position="last")
+
+# --------------------------------------------------------------------------- #
+# Gallery view (grid of daily charts with SMA50 blue / SMA200 yellow)
+# --------------------------------------------------------------------------- #
+if gallery_view:
+    shown = f.head(GALLERY_MAX)
+    st.subheader(f"🖼 Gallery — {len(shown)} of {len(f)} charts "
+                 "(daily · SMA50 blue · SMA200 yellow)")
+    if len(f) > GALLERY_MAX:
+        st.caption(f"Showing first {GALLERY_MAX}. Narrow the filters to see "
+                   "specific names. Charts are fetched on first view, then cached.")
+    day = updated.strftime("%Y-%m-%d")
+    recs = shown.to_dict("records")
+    with st.spinner("Rendering charts (first load fetches daily data)…"):
+        for i in range(0, len(recs), gal_cols):
+            cols = st.columns(gal_cols)
+            for col, r in zip(cols, recs[i:i + gal_cols]):
+                tag = f"S{int(r['current_stage'])}" + (
+                    " EMERGED" if r.get("stage2_emerged") else "")
+                png = gallery_png(r["ticker"], tag, day)
+                with col:
+                    if png:
+                        st.image(png, use_container_width=True)
+                    else:
+                        st.warning(f"{r['ticker']}: no daily data")
+                    st.caption(
+                        f"**{r['ticker']}** {STAGE_EMOJI.get(int(r['current_stage']),'')}"
+                        f" · {fmt_cap(r.get('market_cap'))}")
+    st.stop()
 
 # --------------------------------------------------------------------------- #
 # Results table

@@ -17,8 +17,10 @@ from config import DATA_DIR
 _OHLCV = ["Open", "High", "Low", "Close", "Volume"]
 
 
-def _cache_path(ticker: str) -> Path:
-    return DATA_DIR / f"{ticker}.csv"
+def _cache_path(ticker: str, interval: str = "1wk") -> Path:
+    # weekly keeps the bare name (back-compat); other intervals get a suffix
+    return DATA_DIR / (f"{ticker}.csv" if interval == "1wk"
+                       else f"{ticker}.{interval}.csv")
 
 
 def _is_fresh(path: Path, max_age_days: float) -> bool:
@@ -38,7 +40,8 @@ def _read_cache(path: Path) -> pd.DataFrame | None:
         return None
 
 
-def _download(ticker: str, period: str, retries: int = 2) -> pd.DataFrame | None:
+def _download(ticker: str, period: str, retries: int = 2,
+              interval: str = "1wk") -> pd.DataFrame | None:
     import yfinance as yf
 
     for attempt in range(retries + 1):
@@ -46,7 +49,7 @@ def _download(ticker: str, period: str, retries: int = 2) -> pd.DataFrame | None
             df = yf.download(
                 ticker,
                 period=period,
-                interval="1wk",
+                interval=interval,
                 auto_adjust=True,
                 progress=False,
                 threads=False,
@@ -66,15 +69,16 @@ def _download(ticker: str, period: str, retries: int = 2) -> pd.DataFrame | None
     return None
 
 
-def fetch_one(ticker: str, period: str, max_age_days: float) -> pd.DataFrame | None:
-    """Return weekly OHLCV for one ticker, from cache or fresh download."""
+def fetch_one(ticker: str, period: str, max_age_days: float,
+              interval: str = "1wk") -> pd.DataFrame | None:
+    """Return OHLCV for one ticker (weekly by default), from cache or download."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    path = _cache_path(ticker)
+    path = _cache_path(ticker, interval)
     if _is_fresh(path, max_age_days):
         cached = _read_cache(path)
         if cached is not None:
             return cached
-    df = _download(ticker, period)
+    df = _download(ticker, period, interval=interval)
     if df is not None:
         try:
             df.to_csv(path)

@@ -14,6 +14,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -197,6 +198,26 @@ def api_chart(ticker: str):
     if not png.exists():
         return jsonify({"error": "no chart"}), 404
     return send_file(png, mimetype="image/png")
+
+
+@app.get("/api/gallery_chart/<ticker>.png")
+def api_gallery_chart(ticker: str):
+    """Daily candlestick thumbnail with 50/200-day SMA (blue/yellow), cached."""
+    ticker = ticker.upper()
+    png = CHARTS_DIR / "gallery" / f"{ticker}.png"
+    if png.exists() and (time.time() - png.stat().st_mtime) < 86400:
+        return send_file(png, mimetype="image/png")
+    try:
+        from charts import gallery_chart
+        from data_fetch import fetch_one
+
+        d = fetch_one(ticker, "3y", max_age_days=1, interval="1d")
+        if d is None or d.empty:
+            return jsonify({"error": "no data"}), 404
+        gallery_chart(ticker, d, title_suffix=request.args.get("tag", ""))
+        return send_file(png, mimetype="image/png")
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.post("/api/generate_chart/<ticker>")
