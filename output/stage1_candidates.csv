@@ -1,1 +1,4 @@
 ticker,score,base_duration_weeks,base_range_pct,vol_ratio_4w,rs_trend,sma30w_slope_pct,price_vs_base_high_pct,current_price
+FFIN,70,38,22.54,1.61,flat,10.77,-2.49,34.88
+TROW,60,62,32.99,1.21,rising,13.13,5.52,118.55
+CBSH,50,33,22.43,1.22,rising,8.54,-1.99,58.03
