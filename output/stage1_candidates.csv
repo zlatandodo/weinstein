@@ -1,2 +1,3 @@
 ticker,score,base_duration_weeks,base_range_pct,vol_ratio_4w,rs_trend,sma30w_slope_pct,price_vs_base_high_pct,current_price
-THRM,50,27,33.93,1.99,rising,1.95,3.28,40.58
+ICUI,70,41,32.96,1.22,rising,12.77,13.33,184.56
+CSW,50,38,31.7,1.23,rising,1.46,4.36,350.68
