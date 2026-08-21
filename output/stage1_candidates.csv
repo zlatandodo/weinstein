@@ -1,2 +1,3 @@
 ticker,score,base_duration_weeks,base_range_pct,vol_ratio_4w,rs_trend,sma30w_slope_pct,price_vs_base_high_pct,current_price
-DV,50,21,28.81,1.55,rising,9.5,9.83,13.29
+DV,50,21,28.81,1.77,rising,13.74,10.0,13.31
+SHC,30,21,30.82,1.23,rising,3.17,-1.1,19.57
