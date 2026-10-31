@@ -1,1 +1,3 @@
 ticker,score,base_duration_weeks,base_range_pct,vol_ratio_4w,rs_trend,sma30w_slope_pct,price_vs_base_high_pct,current_price
+ALLE,30,20,34.62,1.26,flat,5.18,3.39,186.44
+CBOE,30,20,30.41,1.36,rising,9.65,1.83,335.53
